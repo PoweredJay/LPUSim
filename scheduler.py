@@ -64,7 +64,7 @@ def list_schedule_order(ops: dict, priority: dict) -> list:
                 heapq.heappush(ready, (-priority[nxt], nxt))
 
     if len(order) != len(ops):
-        raise ValueError("cycle detected in op graph — not a DAG")
+        raise ValueError("order != ops")
     return order
 
 def asap_schedule(ops: dict, units: list) -> list:
