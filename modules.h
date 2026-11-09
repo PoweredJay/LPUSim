@@ -28,6 +28,9 @@ enum Opcode {
     VXM_MUL,
     VXM_MAX,
     VXM_RELU,             // max(0, src1) -> dst
+    VXM_TANH,
+    VXM_EXP,
+    VXM_RSQRT,
 
     // MXM
     MXM_LOAD_WEIGHTS,     // streams -> weight buffer
@@ -40,6 +43,10 @@ enum Opcode {
     SXM_SHIFT_SOUTH,      // move lanes down by `value`
     SXM_PERMUTE,          // reorder lanes
     SXM_TRANSPOSE,        // 16 streams in -> 16 streams out, rows and columns swapped
+
+    C2C_DESKEW,
+    C2C_SEND,
+    C2C_RECEIVE,
 };
 
 // One instruction. Just data: each slice decides what to do with it.
@@ -92,7 +99,7 @@ public:
     virtual ~Slice() {}
 
     // Hand the slice an instruction to run.
-    virtual void dispatch(const Instruction& inst) = 0;
+    virtual void dispatch(Instruction& inst) = 0;
 
     // Run one clock cycle.
     virtual void tick(int cycle) = 0;
