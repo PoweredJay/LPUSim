@@ -1,0 +1,21 @@
+# Paper reference points: Abts et al., "Think Fast: A Tensor Streaming Processor", ISCA 2020, Fig. 9
+# (compiler-generated matmuls, throughput at 1 GHz vs operational intensity in ops per weight byte; the paper labels the axis "offered load").
+# Values read off the figure and transcribed from the team's earlier "Roofline: paper vs ours" chart;
+# they have NOT been re-digitized from the paper PDF for this repo. Not simulated: used only as a
+# reference series in scripts/plots.py. Our sweep's ops/B is 2M; the paper's x values sit ~0.2% below
+# 2M (511 vs 512, 8,179 vs 8,192), so plots.py pairs each paper point with the simulated M whose 2M is
+# within 1%. 8,179 (M = 4096) has no simulated partner: one MEM store is at most one 4,096-word bank.
+ops_per_weight_byte,tops_1ghz
+8,59
+16,116
+32,194
+64,309
+128,453
+200,540
+511,680
+639,697
+799,720
+1022,737
+2045,765
+4090,787
+8179,797

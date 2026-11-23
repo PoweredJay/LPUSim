@@ -1,5 +1,5 @@
 // viz_layers.cpp - write the layer shapes of a ResNet for the schedule explorer.
-//   viz_layers [--depth 50] [--out ../../results/viz]  ->  <out>/resnet<depth>_layerdesc.csv
+//   viz_layers [--depth 50] [--out ../results/viz]  ->  <out>/resnet<depth>_layerdesc.csv
 // One row per layer, in the same order as resnet<depth>_layers.csv. Shapes only: no compile, no run.
 #include <cstdio>
 #include <cstring>
@@ -10,7 +10,7 @@
 
 int main(int argc, char** argv) {
     int depth = 50;
-    std::string out = "../../results/viz";
+    std::string out = "../results/viz";
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--depth") && i + 1 < argc) depth = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];

@@ -1,0 +1,14 @@
+op,d_func,d_skew,occupancy,tag,source
+MEM Read,1,0,1,A,"instruction-timing-table.csv MEM Read"
+MEM Write,0,0,1,A,"instruction-timing-table.csv MEM Write (d_skew 0)"
+MEM Gather,2,0,1,A,"instruction-timing-table.csv MEM Gather"
+VXM add,1,0,1,A,"default: 1-cycle ALU"
+VXM mul,2,0,1,A,"default: 2-cycle multiplier"
+VXM convert int32->int8,1,0,1,A,"default: shift+round+saturate"
+VXM relu,1,0,1,A,"default"
+VXM max,1,0,1,A,"default"
+MXM LW,1,0,1,A/P,"instruction-timing-table.xlsx (LW int8)"
+MXM IW (buffer),1,0,1,A,"instruction-timing-table.xlsx (IW (from LW buffer) int8)"
+MXM ABC,20,0,1,I,"instruction-timing-table.xlsx (ABC (matmul) int8)"
+Sync preamble,35,,,P,p.152
+Superlane stagger,19,,,P,Fig. 6

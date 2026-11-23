@@ -28,7 +28,7 @@ static bool run_net_(Net net, const std::string& title, std::vector<std::int8_t>
     GoldenResult gold = golden(net, input, true);
     Floorplan fp;
     LatencyTable lat;
-    lat.load_csv("../../planning/instruction-timing-table.csv", nullptr);
+    lat.load_csv("../planning/instruction-timing-table.csv", nullptr);
     Scheduler sch(fp, lat);
     Simulator sim(fp, lat);
     CompileOptions opt;

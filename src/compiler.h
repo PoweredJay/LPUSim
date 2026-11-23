@@ -2,7 +2,7 @@
 // LPU and drives the scheduler. Output: per-queue programs + the initial MEM image (weights,
 // gather maps, input) written straight into the simulator's memory.
 //
-// Lowering choices (all [A] unless noted; see src/scheduler/README.md):
+// Lowering choices (all [A] unless noted; see README.md and ARCHITECTURE.md):
 //  * Activations are int8, one 320-byte MEM word per pixel per 320-channel group. Layout per
 //    tensor is picked from its consumers: "standard" (channels at lane 0) or "dy-packed" for
 //    3x3 consumers: the channel block is stored 2-3 times at different superlane offsets so a

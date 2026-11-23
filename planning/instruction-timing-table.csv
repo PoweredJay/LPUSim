@@ -1,0 +1,54 @@
+unit,instruction,datatype,d_func,d_skew,occupancy,repeatable,min_repeat_gap,inputs,outputs,dir_choice,bank_or_state,tag,source,notes
+ICU,NOP N,,n/a,n/a,N,no,,none,none,n/a,,P,Table I p.149; p.151,16-bit N field
+ICU,Repeat n d,,n/a,n/a,n*d,no,,none,none,n/a,repeats previous instr,P,Table I p.149,
+ICU,Sync,,n/a,n/a,until Notify,no,,none,none,n/a,barrier,P,p.152,
+ICU,Notify,,n/a,n/a,,no,,none,none,n/a,barrier,P,p.152,Notify to Sync retired = 35 cycles chip-wide
+ICU,Ifetch,,,,,,,1 stream (640 B = 2 vectors),none,n/a,fills IQ,P,p.152,runs alongside execution; IQ capacity unknown
+ICU,Config,,n/a,n/a,,no,,none,none,n/a,per-tile power mode,P,Table I p.149,
+MEM,Read a s,int8,,,,,,none,1 stream,yes,bank read port,,Table I p.149,
+MEM,Write a s,int8,,,,,,1 stream,none,n/a,bank write port,,Table I p.149,
+MEM,Gather s map,int8,,,,,,1 stream (map),1 stream,yes,bank read port,,Table I p.149; p.152,
+MEM,Scatter s map,int8,,,,,,2 streams (data + map),none,n/a,bank write port,,Table I p.149; p.152,
+VXM,add (binary),int8,,,,,,2 x 1 stream,1 stream,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,add (binary),int32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,add (binary),fp32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,sub (binary),int8,,,,,,2 x 1 stream,1 stream,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,sub (binary),int32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,sub (binary),fp32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,mul (binary),int8,,,,,,2 x 1 stream,1 stream,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,mul (binary),int32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,mul (binary),fp32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,max (binary),int8,,,,,,2 x 1 stream,1 stream,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,max (binary),int32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,max (binary),fp32,,,,,,2 x SG4,SG4,yes,stateless,,Table I p.149; p.152,_sat / _mod variants
+VXM,negate (unary),int8,,,,,,1 stream,1 stream,yes,stateless,,Table I p.149,
+VXM,negate (unary),int32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,negate (unary),fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,mask (unary),int8,,,,,,1 stream,1 stream,yes,stateless,,Table I p.149,
+VXM,mask (unary),int32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,mask (unary),fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,convert int32->fp32,int32->fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,convert fp32->int8,fp32->int8,,,,,,SG4,1 stream,yes,stateless,,Table I p.149,requantize path
+VXM,ReLU,int8,,,,,,1 stream,1 stream,yes,stateless,,Table I p.149,
+VXM,ReLU,fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,TanH,fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,Exp,fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+VXM,RSqrt,fp32,,,,,,SG4,SG4,yes,stateless,,Table I p.149,
+MXM,LW,int8,1,0,20 per plane,yes,,16 streams,none,n/a,writes LW buffer of plane p,A/P,mxm-instruction-latencies.md; HC34,"occupancy P, d_func A"
+MXM,IW (from streams),int8,1,0,20 per plane,yes,,16 streams,none,n/a,writes weights of plane p,A/P,mxm-instruction-latencies.md; HC34,plane can't compute meanwhile (T8)
+MXM,IW (from LW buffer),int8,1,n/a,1,yes,,none,none,n/a,LW buffer -> weights of plane p,A,mxm-design-decisions.md T5,
+MXM,ABC (matmul),int8,20,0,1 per vector,yes,1,1 stream,SG4 (int32),yes,reads weights of plane p,I,mxm-instruction-latencies.md; HC34,Repeat M for M vectors
+MXM,ABC (matmul),fp16,20,0,1 per vector,yes,1,2 streams,SG4 (fp32),yes,reads weights (2 planes),I,ISCA 2022; HC34,K=160 for fp16
+MXM,ACC,int32,1,0,1,yes,1,2 x SG4,SG4,yes,partial sum,A,"mxm-design-decisions.md T6, S7",
+MXM,ACC,fp32,1,0,1,yes,1,2 x SG4,SG4,yes,partial sum,A,"mxm-design-decisions.md T6, S7",
+SXM,Shift up N,int8,,,,,,1 stream,1 stream,yes,,,Table I p.149; p.153,
+SXM,Shift down N,int8,,,,,,1 stream,1 stream,yes,,,Table I p.149; p.153,
+SXM,Select,int8,,,,,,2 streams,1 stream,yes,,,Table I p.149; p.153,
+SXM,Permute map,int8,,,,,,1 stream,1 stream,yes,,,Table I p.149; p.153,
+SXM,Distribute map,int8,,,,,,1 stream,1 stream,yes,,,Table I p.149; p.153,
+SXM,Rotate 3x3,int8,,,,,,TBD (3x3 block),9 streams,yes,,,Table I p.149; p.153,
+SXM,Rotate 4x4,int8,,,,,,TBD (4x4 block),16 streams,yes,,,Table I p.149; p.153,
+SXM,Transpose sg16,int8,,,,,,16 streams,16 streams,yes,,,Table I p.149; p.153,
+C2C,Deskew,,,,,,,,,,,,Table I p.149,out of scope: stub
+C2C,Send,,,,,,,,,,,,Table I p.149,out of scope: stub
+C2C,Receive,,,,,,,,,,,,Table I p.149,out of scope: stub

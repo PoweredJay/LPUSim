@@ -1,0 +1,2 @@
+# scripts/plots.py and scripts/report.py; planning/xlsx_to_csv.py needs only the standard library
+matplotlib>=3.5

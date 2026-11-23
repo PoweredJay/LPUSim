@@ -1,7 +1,7 @@
 // main_resnet.cpp - compile ResNet-50/101/152 for the LPU, run it on the cycle simulator,
 // check the logits bit-exactly against the golden int8 model, and write results/ CSVs.
 //
-//   resnet [--depth 50] [--seed 1] [--out ../../results] [--latency ../../planning/instruction-timing-table.csv]
+//   resnet [--depth 50] [--seed 1] [--out ../results] [--latency ../planning/instruction-timing-table.csv]
 //          [--no-golden]      skip the reference check (timing only)
 //          [--mem-single-issue]  sensitivity: a MEM IQ issues one instruction per cycle
 //          [--sxm-hops N]     sensitivity: SXM width in hops per side (default 4)
@@ -48,8 +48,8 @@ template <class T> ull U(T v) { return static_cast<ull>(v); }
 struct RunOptions {
     int depth = 50;
     unsigned seed = 1;
-    std::string out = "../../results";
-    std::string latency_csv = "../../planning/instruction-timing-table.csv";
+    std::string out = "../results";
+    std::string latency_csv = "../planning/instruction-timing-table.csv";
     std::string tag_suffix, events_dir;
     bool check_golden = true;
     bool alias_weights = false;

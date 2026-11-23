@@ -1,0 +1,46 @@
+placement,M,ops_per_weight_byte,cycles,ops_per_cycle,tops_1ghz,peak_tops_1ghz,bit_exact,violations,ifetches,iq_underflows
+"weights next to MXM (MEM28-43)",1,2,281,11661.2,11.6612,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",2,4,282,23239.7,23.2397,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",4,8,284,46152.1,46.1521,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",8,16,288,91022.2,91.0222,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",16,32,296,177124,177.124,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",32,64,312,336082,336.082,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",64,128,420,499322,499.322,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",100,200,564,580993,580.993,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",128,256,676,620459,620.459,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",256,512,1188,706112,706.112,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",320,640,1444,726161,726.161,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",400,800,1764,743039,743.039,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",512,1024,2212,758464,758.464,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",1024,2048,4260,787663,787.663,819.2,1,0,0,0
+"weights next to MXM (MEM28-43)",2048,4096,8356,803122,803.122,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",1,2,341,9609.38,9.60938,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",2,4,342,19162.6,19.1626,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",4,8,344,38102.3,38.1023,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",8,16,348,75328.7,75.3287,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",16,32,356,147272,147.272,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",32,64,372,281875,281.875,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",64,128,558,375834,375.834,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",100,200,702,466781,466.781,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",128,256,736,569878,569.878,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",256,512,1248,672164,672.164,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",320,640,1504,697191,697.191,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",400,800,1824,718596,718.596,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",512,1024,2272,738434,738.434,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",1024,2048,4320,776723,776.723,819.2,1,0,0,0
+"weights mid-hemisphere (MEM14-29)",2048,4096,8416,797396,797.396,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",1,2,357,9178.71,9.17871,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",2,4,358,18306.1,18.3061,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",4,8,360,36408.9,36.4089,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",8,16,364,72017.6,72.0176,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",16,32,372,140938,140.938,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",32,64,388,270252,270.252,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",64,128,574,365357,365.357,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",100,200,718,456379,456.379,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",128,256,752,557753,557.753,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",256,512,1264,663656,663.656,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",320,640,1520,689853,689.853,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",400,800,1840,712348,712.348,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",512,1024,2288,733270,733.27,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",1024,2048,4336,773857,773.857,819.2,1,0,0,0
+"weights next to VXM (MEM0-15)",2048,4096,8432,795883,795.883,819.2,1,0,0,0
