@@ -13,7 +13,7 @@ import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from plots import load_paper, load_roofline, pair_with_paper  # noqa: E402
+from plots import load_paper, load_roofline, pair_with_paper, read_csv  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PEAK = 4 * 2 * 320 * 320 / 1000.0   # TOPS at 1 GHz, 4 planes
@@ -197,6 +197,37 @@ def main():
     w("![roofline](figures/roofline.png)")
     w("")
     w("![ours vs paper](figures/roofline_vs_paper.png)")
+    w("")
+
+    # ---------------------------------------------------------------- latency sensitivity (tornado)
+    sens_rows = read_csv(os.path.join(R, "latency_sensitivity.csv"))
+    sbase = int(sens_rows[0]["baseline_cycles"])
+    w("## Latency sensitivity (ResNet-50, `results/latency_sensitivity.csv`)")
+    w("")
+    w(f"Each assumed [A] value halved and doubled on its own (`scripts/sensitivity.py`); baseline {sbase:,} "
+      "cycles. Every run is bit-exact with 0 violations. Latencies are whole cycles, so a 1-cycle value has no "
+      "halved run.")
+    w("")
+    w("| value | tag | assumed | halved | doubled | range |")
+    w("|---|---|---:|---:|---:|---:|")
+    for r in sens_rows:
+        unit = " hops" if r["unit"] == "hops" else ""
+        def delta(c):
+            if not c:
+                return "n/a"
+            d = int(c) - sbase
+            return f"{d:+,} ({100.0 * d / sbase:+.2f}%)"
+        w(f"| {r['instruction']} | {r['tag']} | {r['assumed']}{unit} | {delta(r['half_cycles'])} | "
+          f"{delta(r['double_cycles'])} | {int(r['swing_cycles']):,} |")
+    inst = [r for r in sens_rows if r["unit"] != "hops"]
+    worst_inst = max(inst, key=lambda r: max(abs(int(c) - sbase) for c in (r["half_cycles"], r["double_cycles"]) if c))
+    wi = max(abs(int(c) - sbase) for c in (worst_inst["half_cycles"], worst_inst["double_cycles"]) if c)
+    w("")
+    w(f"No instruction latency moves ResNet-50 by more than {100.0 * wi / sbase:.1f}% ({worst_inst['instruction']}, "
+      f"{wi:+,} cycles); the SXM width, a floorplan distance, matters most. This sweep is ResNet-50 only: it does "
+      "not test the roofline's middle-intensity gap.")
+    w("")
+    w("![latency sensitivity](figures/latency_sensitivity.png)")
     w("")
     out = os.path.join(R, "REPORT.md")
     with open(out, "w") as f:

@@ -87,3 +87,25 @@ No simulated point for paper x = 8,179 (M = 4096 needs a 4,096-word store in one
 ![roofline](figures/roofline.png)
 
 ![ours vs paper](figures/roofline_vs_paper.png)
+
+## Latency sensitivity (ResNet-50, `results/latency_sensitivity.csv`)
+
+Each assumed [A] value halved and doubled on its own (`scripts/sensitivity.py`); baseline 49,482 cycles. Every run is bit-exact with 0 violations. Latencies are whole cycles, so a 1-cycle value has no halved run.
+
+| value | tag | assumed | halved | doubled | range |
+|---|---|---:|---:|---:|---:|
+| SXM crossing | A | 4 hops | -199 (-0.40%) | +398 (+0.80%) | 597 |
+| VXM mul | A | 2 | -3 (-0.01%) | +200 (+0.40%) | 203 |
+| VXM add | A | 1 | n/a | +124 (+0.25%) | 124 |
+| MEM read | A | 1 | n/a | +75 (+0.15%) | 75 |
+| MEM gather | A | 2 | -24 (-0.05%) | +48 (+0.10%) | 72 |
+| VXM convert | A | 1 | n/a | +42 (+0.08%) | 42 |
+| VXM relu | A | 1 | n/a | +40 (+0.08%) | 40 |
+| MXM install weights (IW) | A | 1 | n/a | +32 (+0.06%) | 32 |
+| MXM load weights (LW) | A/P | 1 | n/a | +15 (+0.03%) | 15 |
+| MEM write | A | 1 | n/a | +6 (+0.01%) | 6 |
+| VXM max | A | 1 | n/a | +4 (+0.01%) | 4 |
+
+No instruction latency moves ResNet-50 by more than 0.4% (VXM mul, +200 cycles); the SXM width, a floorplan distance, matters most. This sweep is ResNet-50 only: it does not test the roofline's middle-intensity gap.
+
+![latency sensitivity](figures/latency_sensitivity.png)

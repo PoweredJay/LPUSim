@@ -57,12 +57,21 @@ Compared with the paper (`planning/paper_fig9.csv`), weights next to the MXM:
   `roofline_wide_weights.csv`) cuts it to -5% at 8 ops/B and leaves high intensity unchanged.
 * **Up to +10% at 128 ops/B.** Above the knee our time is 164 + 4M cycles: the next tile's LW hides
   completely behind the current ABC with no gap between rounds, so our curve has a sharp knee where
-  the paper's bends gradually. We cannot see the paper's schedule, so this is an inference: its
-  programs lose some cycles near the knee and ours lose none. The perfect overlap rests on assumed
-  LW / IW latencies [A] and the inferred ABC d_func of 20 [I].
+  the paper's bends gradually. Converted to cycles for the same matmul, the paper takes about 40
+  cycles longer (64-512 ops/B), roughly 10 per weight swap (4 rounds), where our model swaps in 1
+  cycle (IW, [A]). This is an untested hypothesis: the paper does not break down its timing. The IW
+  latency is now adjustable (`--lat mxm_iw=N`), so the next step is a roofline sweep over it.
 * **+2 to +4% from 512 ops/B up**, where only the fixed 164-cycle tail is left.
 
 The full table and the derivation are in `results/REPORT.md`.
+
+### Latency sensitivity (`results/figures/latency_sensitivity.png`)
+
+Each assumed [A] value is halved and doubled on its own, and ResNet-50 is rerun (bit-exact every
+time). The SXM width, a floorplan distance, matters most: -199 to +398 cycles (under 1%). No
+instruction latency moves ResNet-50 by more than 0.4% (VXM mul doubled: +200); doubling the weight
+install (IW) adds 32 cycles. Latencies are whole cycles, so a 1-cycle value has no halved run. This
+sweep is ResNet-50 only and does not test the roofline's middle gap. Table: `results/REPORT.md`.
 
 ## Reproduce everything (one command)
 
@@ -81,8 +90,8 @@ The default build dir is `./build`, or `~/.cache/lpusim-build` when the checkout
 spaces (as under Google Drive's "My Drive"), because make cannot build targets in such a path.
 
 `make` runs `scripts/reproduce.sh`, which regenerates the latency CSV from the xlsx, builds, runs
-both test suites, ResNet-50/101/152, the three sensitivity runs and both roofline sweeps, then
-draws `results/figures/roofline.png` and writes **`results/REPORT.md`**, which holds every number in
+both test suites, ResNet-50/101/152, the three sensitivity runs, both roofline sweeps and the
+latency sweep, then draws the four charts in `results/figures/` and writes **`results/REPORT.md`**, which holds every number in
 this README. It exits non-zero if a test fails or any run has a violation, an IQ underflow or a
 logits mismatch. It takes about a minute (the runs go in parallel; logs in `results/logs/`).
 

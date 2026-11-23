@@ -38,9 +38,13 @@ simulator checks the scheduler's choices independently.
   port and one write port per slice; a read and a write to the same bank in one cycle is illegal
   (pseudo-dual-port).
 * **MXM [P/I].** 4 planes (W0, W1, E0, E1), each a 320 x 320 int8 weight array. LW streams a tile
-  into the plane's buffer (20 issues x 16 streams = 320 rows), IW copies buffer -> array in 1 cycle
-  [A], ABC multiplies one activation vector per issue with d_func 20 [I], emitting 4 int32 byte
-  planes.
+  into the plane's buffer (20 issues x 16 streams = 320 rows; the buffer is ready LW d_func [A]
+  after the last issue), IW copies buffer -> array and the weights are usable IW d_func [A] later,
+  ABC multiplies one activation vector per issue with d_func 20 [I], emitting 4 int32 byte planes.
+  The compiler spaces LW -> IW -> ABC by these latencies and the simulator checks them, so
+  `--lat mxm_lw=N` / `--lat mxm_iw=N` change the schedule.
+* **MEM Write [A].** d_func is issue -> first cycle a Read sees the word (default 1: readable the next
+  cycle); a Read of a word whose Write has not landed is a violation.
 * **VXM [P/A].** 16 ALUs, each with its own IQ: add, mul by an immediate, convert (round, shift,
   saturate), relu, max.
 * **SXM.** 28 IQs exist; no SXM op is executed yet (the lowering needs none).
@@ -130,6 +134,9 @@ stream writes. Every one of these is a violation, and every reported result has 
 * more than one R-type or one W-type instruction from a MEM IQ in a cycle (`--mem-single-issue`:
   more than one in total), or more than one instruction from any other IQ
 * IQ underflow or overflow, and out-of-order or wrong Ifetch bytes
+* a Read or Gather of a word whose Write has not landed (MEM write d_func)
+* an IW before its LW has landed, an LW that overwrites the buffer during an IW, or an ABC before
+  its IW has finished (LW / IW d_func)
 
 The simulator never stalls. A schedule that is one cycle off is reported, not absorbed.
 
@@ -140,5 +147,6 @@ time and adds 19 cycles at the end.
 ## 8. Reproducing
 
 `make` in the repo root runs `scripts/reproduce.sh`: xlsx -> CSV, build, tests, ResNet-50/101/152,
-sensitivity runs, roofline sweeps, `scripts/plots.py`, `scripts/report.py`. Every number in the
+sensitivity runs, roofline sweeps, the latency sweep (`scripts/sensitivity.py`, each [A] value halved
+and doubled), `scripts/plots.py`, `scripts/report.py`. Every number in the
 README is in `results/REPORT.md`, which that last step computes from the run outputs.
