@@ -399,9 +399,16 @@ std::int64_t Scheduler::place(Pipeline& p, bool commit) {
                     for (const Tent& t : tent) used[t.dir]++;
                     if (used[1] < used[0]) std::swap(dirs[0], dirs[1]);
                 }
+                if (E.force_dir >= 0) {
+                    const Direction fd = E.force_dir == 0 ? Direction::East : Direction::West;
+                    if (std::find(dirs.begin(), dirs.end(), fd) == dirs.end())
+                        throw std::runtime_error("pipeline " + p.name + ": forced stream direction is not possible");
+                    dirs = {fd};
+                }
                 for (Direction d : dirs) {
                     const int di = d == Direction::East ? 0 : 1;
-                    for (int base : bases_for(E.width)) {
+                    const std::vector<int> bases = E.force_base >= 0 ? std::vector<int>{E.force_base} : bases_for(E.width);
+                    for (int base : bases) {
                         bool intra = false;
                         bool free = true;
                         std::int64_t need_d = 0;
@@ -457,6 +464,10 @@ std::int64_t Scheduler::place(Pipeline& p, bool commit) {
         S = need;
     }
 
+    for (int e = 0; e < ne; ++e) {
+        p.edges[static_cast<std::size_t>(e)].trial_dir = edir[static_cast<std::size_t>(e)];
+        p.edges[static_cast<std::size_t>(e)].trial_base = ebase[static_cast<std::size_t>(e)];
+    }
     if (!commit) return S;
     // Commit
     const int ev_pipe = static_cast<int>(placed_);

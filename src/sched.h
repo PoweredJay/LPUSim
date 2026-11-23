@@ -82,6 +82,10 @@ struct Edge {
     Direction dir = Direction::East;
     int base = -1;
     std::uint32_t gid = 0;
+    // optional: place on exactly this direction (0 East, 1 West) and stream base
+    int force_dir = -1, force_base = -1;
+    // set by a trial placement (commit = false): the direction and base it would use
+    int trial_dir = -1, trial_base = -1;
 };
 
 struct Pipeline {

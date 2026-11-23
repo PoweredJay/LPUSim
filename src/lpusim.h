@@ -130,7 +130,16 @@ inline bool q_sxm_west(int q) { return q - kQSxmBase < kSxmIqsPerHem; }
 inline constexpr int kNopBytes = 1;
 inline constexpr int kInsBytes = 4;
 inline constexpr int kIqBytes = 640;
-inline constexpr int kFetchBytesPerCycle = 16;   // [ISCA 2020, per the planning doc]: one superlane's 16 B
+inline constexpr int kFetchBytesPerCycle = 16;   // [ISCA 2020]: instruction bytes enter an IQ at 16 B per cycle
+// One Ifetch climbs the 20 tiles and collects one full 320-byte text vector, 16 B per tile [P col. 12].
+// A refill is Ifetch + Repeat 1 = two vectors = 640 B (a shorter last refill may be one vector).
+// Timing [Ours]: 16-byte chunk j of a vector fetched at cycle c lands in the IQ at cycle c + j, and the
+// Repeat is spaced kIfetchRepeatGap cycles so the two vectors land back to back at 16 B per cycle
+// (a 640 B refill takes 40 cycles).
+inline constexpr int kTextVecBytes = kLanes;                                   // 320 B per text vector
+inline constexpr int kChunksPerVec = kTextVecBytes / kFetchBytesPerCycle;      // 20
+inline constexpr int kRefillVecs = 2;                                          // Ifetch + Repeat 1
+inline constexpr int kIfetchRepeatGap = kChunksPerVec;                         // 20 cycles
 // channel -> (IQ, way) and back
 int channel_iq(int q);
 int channel_way(int q);
@@ -188,13 +197,15 @@ struct LatencyTable {
     Lat mxm_lw{1, 0, 1, "A", "LW: 1 issue per cycle, Repeat 20 = one plane"};
     Lat mxm_iw{1, 0, 1, "A", "IW from LW buffer (T5)"};
     Lat mxm_abc{20, 0, 1, "I", "ABC d_func 20 (HC34, T1)"};
-    Lat icu_ifetch{1, 0, 1, "Ours", "Ifetch: consumes one 16-byte piece of its stream per cycle"};
+    Lat icu_ifetch{1, 0, 1, "Ours", "Ifetch: one 320 B vector per issue; chunk j lands j cycles later"};
     int sync_cycles = 35;   // [P] p.152 Notify->Sync, program preamble
     int stagger = 19;       // [P] Fig. 6: superlane 19 finishes 19 cycles after superlane 0
     double clock_ghz = 1.0; // the paper's math uses 1 GHz; 0.9 GHz nominal
 
     bool load_csv(const std::string& path, std::string* log);
     const Lat& of(Opcode op) const;
+    // Look up a latency by its command-line name (mem_read, vxm_add, mxm_abc, ...); nullptr if unknown.
+    Lat* find(const std::string& name);
     void dump_csv(const std::string& path) const;
 };
 

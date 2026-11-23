@@ -22,8 +22,11 @@ host I/O excluded, Sync preamble and superlane stagger included.
 | ResNet-101 | 80,219 | 11,219 | 89.1 us | 12,466 | 14.3K (projected) | timing-only projection |
 | ResNet-152 | 112,723 | 7,984 | 125.2 us | 8,871 | 10.7K (projected) | timing-only projection |
 
-Ifetch on ResNet-50: 270 Ifetches on 53 IQs, 73.9 KB of text fetched from 5,342 MEM words, 5,342
-read-port cycles, tightest Ifetch 1,329 cycles early. See `ARCHITECTURE.md` section 6.
+Ifetch on ResNet-50: one refill is Ifetch + Repeat 1 = two 320 B text vectors (640 B), with bytes
+landing at 16 B per cycle (40 cycles per refill; timing model [Ours]). 195 refills on 53 IQs bring
+73.6 KB of text from 369 MEM words (369 read-port cycles), with 0 underflows and 0 overflows checked
+per 16 B chunk. ResNet-101/152: 518 and 885 refills, also 0/0. Cycles are unchanged on all three.
+See `ARCHITECTURE.md` section 6.
 
 The ResNet-50 match to the paper is close, but it rests on the [A] latencies and on this
 lowering, not on the paper's compiler. ResNet-101/152 do not fit on-chip with this lowering
@@ -67,7 +70,8 @@ golden model, under 1 s to compile and schedule, and 3 s to simulate.
 | `model.h/.cpp` | ResNet builders, random int8 weights, requantize calibration, golden int8 reference |
 | `tests.cpp`, `tests_layers.cpp` | unit and layer tests (all pass), incl. the 144-IQ map and MEM dual-issue tests |
 | `ifetch.h/.cpp` | 640 B IQs: instruction encoding, text in MEM, Ifetch pipeline planning |
-| `main_resnet.cpp` | end-to-end driver, writes `results/resnetNN_*` (incl. `_iqbytes.csv`, `_iqfill.csv`) |
+| `main_resnet.cpp` | end-to-end driver: flags, then build / compile / simulate / check, one function per step |
+| `report.h/.cpp` | the files a run writes: `results/resnetNN_*` CSVs and summary JSON (incl. `_iqbytes.csv`, `_iqfill.csv`), and the `--events` export for the visualizer |
 | `roofline.cpp` | Fig. 9 sweep |
 | `../../results/plots.py` | Figs. 9, 10, 11 style plots and the comparison charts |
 

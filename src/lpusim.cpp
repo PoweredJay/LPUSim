@@ -204,6 +204,18 @@ const Lat& LatencyTable::of(Opcode op) const {
     throw std::runtime_error("LatencyTable: opcode not modeled");
 }
 
+Lat* LatencyTable::find(const std::string& name) {
+    const std::pair<const char*, Lat*> table[] = {
+        {"mem_read", &mem_read},       {"mem_write", &mem_write}, {"mem_gather", &mem_gather},
+        {"vxm_add", &vxm_add},         {"vxm_mul", &vxm_mul},     {"vxm_convert", &vxm_convert},
+        {"vxm_relu", &vxm_relu},       {"vxm_max", &vxm_max},     {"mxm_lw", &mxm_lw},
+        {"mxm_iw", &mxm_iw},           {"mxm_abc", &mxm_abc},
+    };
+    for (const auto& [n, L] : table)
+        if (name == n) return L;
+    return nullptr;
+}
+
 void LatencyTable::dump_csv(const std::string& path) const {
     std::ofstream f(path);
     f << "op,d_func,d_skew,occupancy,tag,source\n";
@@ -474,25 +486,29 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
         violation(cycle, q, "opcode " + std::to_string(static_cast<int>(in.opcode)) + " is not legal on this IQ / way");
         return;
     }
-    // Ifetch (fetch way): take 16 bytes of the instruction stream per cycle into the IQ and check
-    // they are the next bytes of the IQ's text, in order.
+    // Ifetch (fetch way): one issue takes a full 320-byte text vector from the stream; its 16-byte
+    // chunk j lands in the IQ at cycle + j [Ours]. Check the bytes are the next of the IQ's text, in order.
     if (q_is_fetch(q)) {
         const int iq = q - kQFetchBase;
         const Vector* v = operand(cycle, q, si, 0, 0, r);
         const auto& text = prog_->iqs[static_cast<std::size_t>(iq)].text;
-        const std::uint32_t off = si.text_off + static_cast<std::uint32_t>(kFetchBytesPerCycle * r);
-        const std::uint32_t end = std::min(si.text_off + si.text_len, off + static_cast<std::uint32_t>(kFetchBytesPerCycle));
+        const std::uint32_t vbase = si.text_off + static_cast<std::uint32_t>(kTextVecBytes * r);
+        const std::uint32_t tend = si.text_off + si.text_len;
         ++ifetch_vectors;
-        if (off >= end) return;   // padding vector of a short last piece
         std::uint32_t& have = fetched_[static_cast<std::size_t>(iq)];
-        if (off != have) violation(cycle, q, "Ifetch out of order: brings byte " + std::to_string(off) + ", IQ has " + std::to_string(have));
-        for (std::uint32_t b = off; b < end; ++b)
-            if (b >= text.size() || (*v)[b - off] != text[b]) {
-                violation(cycle, q, "Ifetch delivered wrong instruction bytes at " + std::to_string(b));
-                break;
-            }
-        have = end;
-        delivered_[static_cast<std::size_t>(iq)].push_back(ByteEv{cycle, end, end - off});
+        for (int j = 0; j < kChunksPerVec; ++j) {
+            const std::uint32_t off = vbase + static_cast<std::uint32_t>(kFetchBytesPerCycle * j);
+            const std::uint32_t end = std::min(tend, off + static_cast<std::uint32_t>(kFetchBytesPerCycle));
+            if (off >= end) break;   // padding of a short last vector
+            if (off != have) violation(cycle, q, "Ifetch out of order: brings byte " + std::to_string(off) + ", IQ has " + std::to_string(have));
+            for (std::uint32_t b = off; b < end; ++b)
+                if (b >= text.size() || (*v)[b - vbase] != text[b]) {
+                    violation(cycle, q, "Ifetch delivered wrong instruction bytes at " + std::to_string(b));
+                    break;
+                }
+            have = end;
+            delivered_[static_cast<std::size_t>(iq)].push_back(ByteEv{cycle + j, end, end - off});
+        }
         return;
     }
     // Per-IQ issue limits in one cycle: MEM at most one R-type and one W-type (patent), every
@@ -706,8 +722,8 @@ void Simulator::run(const Program& prog) {
     check_text(prog);
 }
 
-// After the run: every instruction's bytes must have reached its IQ (preload or an Ifetch that
-// finished an earlier cycle) before it issues (no underflow, patent col. 13), and the bytes in an
+// After the run: every instruction's bytes must have reached its IQ (preload, or the 16-byte
+// chunk holding its last byte landed in an earlier cycle) before it issues (no underflow, patent col. 13), and the bytes in an
 // IQ (fetched, not yet issued) may never exceed its capacity.
 void Simulator::check_text(const Program& prog) {
     iq_fill.assign(kNumIQs, {});

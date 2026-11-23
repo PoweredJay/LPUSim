@@ -270,6 +270,80 @@ static bool test_iq_bounds() {
                      " overflows");
 }
 
+// 7: Ifetch timing [Ours]: one Ifetch brings a 320-byte text vector, and its 16-byte chunk j lands in
+// the IQ j cycles after the Ifetch issues. The add's Write and its Repeat are fetched as bytes 76-83
+// of one vector (chunks 4 and 5); the Write issues at tw, so the Ifetch must issue by tw - 5. One
+// cycle later is an underflow, although the vector as a whole was taken from the stream in time.
+static bool test_ifetch_chunks() {
+    Floorplan fp;
+    LatencyTable lat;
+    const int gc = Floorplan::mem_global(true, 10), gt = Floorplan::mem_global(true, 20);
+    const int iq = channel_iq(q_mem_write(gc));
+    auto run = [&](int early, std::int64_t* tw_out) {
+        Scheduler sch(fp, lat);
+        Pipeline p = add_pipeline(Floorplan::mem_global(true, 2), Floorplan::mem_global(false, 2), gc, 8, "chunks");
+        sch.place(p);
+        const std::int64_t sy = lat.sync_cycles;
+        const std::int64_t tw = p.ops[3].start + sy;   // chip cycle of the Write
+        Pipeline f;
+        f.name = "ifetch";
+        const int r = f.add_op(make_read(gt, 5000, 1));
+        POp fe;
+        fe.queue = q_fetch(iq);
+        fe.ins.in.opcode = Opcode::Ifetch;
+        fe.n = 1;
+        fe.kind = 'F';
+        fe.min_issue = tw - early - sy;
+        const int fi = f.add_op(fe);
+        const int e = f.add_edge(1);
+        f.produce(r, e, 0, 1);
+        f.consume(fi, 0, e, 0, 1);
+        sch.place(f);
+        const std::int64_t s_if = f.ops[1].start + sy;
+        Program prog = sch.emit();
+        IQProgram& P = prog.iqs[static_cast<std::size_t>(iq)];
+        // text: every entry in way order, except the Write and its Repeat; then 76 pad bytes, the
+        // Write, the Repeat. The Ifetch brings the last 84 bytes.
+        std::uint32_t off = 0;
+        QEntry* wr = nullptr;
+        QEntry* rp = nullptr;
+        for (auto& w : P.ways)
+            for (auto& x : w) {
+                if (x.kind == QEntry::Ins && x.ins.in.opcode == Opcode::MemWrite) { wr = &x; continue; }
+                if (x.kind == QEntry::Rep && wr && !rp) { rp = &x; continue; }
+                x.byte_off = off;
+                x.byte_len = x.kind == QEntry::Nop ? kNopBytes : kInsBytes;
+                off += x.byte_len;
+            }
+        P.preload = off;
+        off += 76;
+        wr->byte_off = off; wr->byte_len = kInsBytes; off += kInsBytes;
+        rp->byte_off = off; rp->byte_len = kInsBytes; off += kInsBytes;
+        P.text.assign(off, 0);
+        for (auto& x : P.ways[static_cast<std::size_t>(iq_fetch_way(iq))])
+            if (x.kind == QEntry::Ins) { x.ins.text_off = P.preload; x.ins.text_len = off - P.preload; }
+        for (auto& Q : prog.iqs) {   // every other IQ: all text preloaded
+            if (&Q == &P) continue;
+            std::uint32_t o = 0;
+            for (auto& w : Q.ways)
+                for (auto& x : w) { x.byte_off = o; x.byte_len = x.kind == QEntry::Nop ? kNopBytes : kInsBytes; o += x.byte_len; }
+            Q.text.assign(o, 0);
+            Q.preload = o;
+            Q.capacity = std::max<std::uint32_t>(o, kIqBytes);
+        }
+        Simulator sim(fp, lat);
+        sim.run(prog);
+        *tw_out = tw - s_if;
+        return std::make_pair(sim.underflows, sim.violations - sim.underflows);
+    };
+    std::int64_t lead_ok = 0, lead_late = 0;
+    const auto ok = run(5, &lead_ok), late = run(4, &lead_late);
+    return check("7  Ifetch: 16-byte chunk j of a 320 B vector lands j cycles after the Ifetch",
+                 lead_ok == 5 && lead_late == 4 && ok.first == 0 && ok.second == 0 && late.first > 0,
+                 "Ifetch " + std::to_string(lead_ok) + " cycles before the Write: " + std::to_string(ok.first) +
+                     " underflows; " + std::to_string(lead_late) + " cycles before: " + std::to_string(late.first) + " underflows");
+}
+
 int main() {
     int fails = 0;
     fails += !test_streams_equivalence();
@@ -281,6 +355,7 @@ int main() {
     fails += !test_mem_iq_dual_issue();
     fails += !test_iq_map();
     fails += !test_iq_bounds();
+    fails += !test_ifetch_chunks();
     std::printf("\n%s (%d failed)\n", fails ? "FAILED" : "ALL PASSED", fails);
     return fails ? 1 : 0;
 }

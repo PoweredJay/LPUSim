@@ -1,8 +1,10 @@
 // roofline.cpp - Fig. 9-style sweep: arithmetic throughput vs offered load (ops per weight byte)
 // for [M x 320] x [320 x 5120] int8 matmuls (16 weight tiles, 4 rounds on the 4 planes), with
 // the weights placed in three MEM regions. Every point is also checked bit-exact.
-//   roofline [--out ../../results]
+//   roofline [--out ../../results] [--m 4,8,16] [--csv roofline.csv]
 #include <cstdio>
+#include <cstdlib>
+#include <vector>
 #include <cstring>
 #include <fstream>
 #include <string>
@@ -19,9 +21,19 @@ using namespace lpu::model;
 
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
-    std::string out = "../../results";
+    std::string out = "../../results", csv = "roofline.csv";
+    std::vector<int> ms;
+    for (int M = 1; M <= 2048; M *= 2) ms.push_back(M);
     for (int i = 1; i < argc; ++i)
         if (!std::strcmp(argv[i], "--out") && i + 1 < argc) out = argv[++i];
+        else if (!std::strcmp(argv[i], "--m") && i + 1 < argc) {   // comma-separated M values
+            ms.clear();
+            for (const char* q = argv[++i]; *q;) {
+                ms.push_back(std::atoi(q));
+                while (*q && *q != ',') ++q;
+                if (*q) ++q;
+            }
+        } else if (!std::strcmp(argv[i], "--csv") && i + 1 < argc) csv = argv[++i];
     struct Place { const char* name; int wlo, whi, alo, ahi; };
     const Place places[] = {
         {"weights next to MXM (MEM28-43)", 28, 43, 0, 27},
@@ -29,10 +41,10 @@ int main(int argc, char** argv) {
         {"weights next to VXM (MEM0-15)", 0, 15, 16, 43},
     };
     const int N = 16 * kLanes;
-    std::ofstream f(out + "/roofline.csv");
+    std::ofstream f(out + "/" + csv);
     f << "placement,M,ops_per_weight_byte,cycles,ops_per_cycle,tops_1ghz,peak_tops_1ghz,bit_exact,violations,ifetches,iq_underflows\n";
     for (const Place& pl : places) {
-        for (int M = 1; M <= 2048; M *= 2) {
+        for (int M : ms) {
             NetBuilder b(42);
             const int x = b.tensor("act", M, 1, kLanes);
             b.conv("gemm", x, N, 1, 1, 0, false);
