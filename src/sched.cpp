@@ -231,7 +231,7 @@ void Scheduler::commit_mem(const Pipeline& p, std::int64_t S) {
                 if (a % sim::kBankWords == 0) continue;
                 const std::size_t w = idx(o.mem_g, a);
                 if (o.mk == MemKind::ReadSeq) last_read_[w] = std::max(last_read_[w], t);
-                else ready_[w] = std::max(ready_[w], t + 1);
+                else ready_[w] = std::max(ready_[w], t + dfunc(o));
             }
         }
     }
@@ -552,7 +552,8 @@ std::int64_t Scheduler::place(Pipeline& p, bool commit) {
             }
             ev_ops.push_back(std::move(ev));
         }
-        makespan_ = std::max(makespan_, o.start + o.n + dfunc(o));
+        // a Write's d_func counts from issue to readable, so its last word is done at start + n - 1 + d_func
+        makespan_ = std::max(makespan_, o.start + o.n + dfunc(o) - (o.mk == MemKind::WriteSeq ? 1 : 0));
     }
     commit_mem(p, S);
     if (record_events) ev_pipes.push_back(EventPipe{p.name, p.layer, S});

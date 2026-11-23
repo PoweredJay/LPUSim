@@ -187,7 +187,8 @@ struct Lat {
 
 struct LatencyTable {
     Lat mem_read{1, 0, 1, "A", "instruction-timing-table.csv MEM Read"};
-    Lat mem_write{0, 0, 1, "A", "instruction-timing-table.csv MEM Write (d_skew 0)"};
+    // a Write puts nothing on a stream: d_func is issue -> first cycle a Read sees the word
+    Lat mem_write{1, 0, 1, "A", "default: word readable the next cycle"};
     Lat mem_gather{2, 0, 1, "A", "instruction-timing-table.csv MEM Gather"};
     Lat vxm_add{1, 0, 1, "A", "default: 1-cycle ALU"};
     Lat vxm_mul{2, 0, 1, "A", "default: 2-cycle multiplier"};
@@ -327,10 +328,13 @@ private:
         int g;
         int addr;
         Vector v;
+        std::int64_t land;   // end of the cycle the word reaches the array (issue + d_func - 1)
     };
     struct Plane {
         std::vector<std::int8_t> w = std::vector<std::int8_t>(kLanes * kLanes, 0);    // [f][i]
         std::vector<std::int8_t> buf = std::vector<std::int8_t>(kLanes * kLanes, 0);
+        std::int64_t buf_ready = 0;   // first cycle an IW may read the LW buffer (last LW + its d_func)
+        std::int64_t w_ready = 0;     // first cycle an ABC may use the weights (IW + its d_func)
     };
 
     void violation(std::int64_t cycle, int q, const std::string& what);
@@ -338,6 +342,8 @@ private:
     const Vector* operand(std::int64_t cycle, int q, const SimInstr& si, int k, int sub, int r);
     void emit(std::int64_t cycle, int pos, Direction dir, int stream, const Vector& v, Tag tag);
     void execute(std::int64_t cycle, int q, const SimInstr& si, int r);
+    void land_writes(std::int64_t before);   // apply writes that land in a cycle < before
+    void read_check(std::int64_t cycle, int q, int g, int addr);
     void exec_vxm(std::int64_t cycle, int q, const SimInstr& si, int r);
 
     const Floorplan& fp_;

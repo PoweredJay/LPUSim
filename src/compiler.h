@@ -153,7 +153,7 @@ private:
         int consumers_left = 0;
         bool host = false;
     };
-    struct PlaneState { std::int64_t last_iw = -1, abc_end = 0; long tile = -1; };
+    struct PlaneState { std::int64_t w_ready = 0, abc_end = 0; long tile = -1; };   // w_ready: last IW + its d_func
 
     // planning
     Layout layout_for(int t) const;

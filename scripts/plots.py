@@ -293,62 +293,84 @@ def sensitivity_figure(results, out_png):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.colors import to_rgb
     from matplotlib.patches import Patch
+    from matplotlib.ticker import FuncFormatter, MultipleLocator
     from matplotlib.transforms import blended_transform_factory
 
     rows = read_csv(os.path.join(results, "latency_sensitivity.csv"))
     base = int(rows[0]["baseline_cycles"])
     HALF, DOUBLE = SERIES[0], SERIES[1]
+    FRAME_ALPHA = 0.35      # plot frame and legend box
 
-    _style(plt)
-    fig, ax = plt.subplots(figsize=(11, 6.8))
-    fig.patch.set_facecolor(SURFACE)
-    ax.set_facecolor(SURFACE)
-    ax.set_axisbelow(True)
-    for s in ax.spines.values():
-        s.set_visible(False)
-    ax.grid(True, axis="x", color=GRID, lw=0.8)
-    left = blended_transform_factory(ax.transAxes, ax.transData)
-    lo = hi = 0
-    for i, r in enumerate(rows):
-        assumed = int(r["assumed"])
-        dh = int(r["half_cycles"]) - base if r["half_cycles"] else None
-        dd = int(r["double_cycles"]) - base
-        for d, col in ((dh, HALF), (dd, DOUBLE)):
-            if d:
-                ax.barh(i, d, height=0.55, color=col, zorder=2)
-                ax.annotate(f"{d:+d}", (d, i), xytext=(6 if d > 0 else -6, 0), textcoords="offset points",
-                            ha="left" if d > 0 else "right", va="center", fontsize=9, color=INK2)
-                lo, hi = min(lo, d), max(hi, d)
-        if dh is None:
-            ax.annotate(f"(cannot halve {assumed} cycle)", (0, i), xytext=(-6, 0), textcoords="offset points",
-                        ha="right", va="center", fontsize=9, color=INK2)
-        if dd == 0 and not dh:
-            ax.annotate("0  (baseline is 0, so unchanged)" if assumed == 0 else "0  (has no effect in the model)",
-                        (0, i), xytext=(6, 0), textcoords="offset points", va="center", fontsize=9, color=INK2)
-        ax.text(-0.17, i, r["instruction"] + ("*" if r["unit"] == "hops" else ""), transform=left, ha="right",
-                va="center", fontsize=9.5, color=INK)
-        ax.text(-0.075, i, f"{assumed}" + (" hops" if r["unit"] == "hops" else ""), transform=left, ha="center",
-                va="center", fontsize=9.5, color=INK)
-    for x, ha, t in ((-0.17, "right", "Instruction"), (-0.075, "center", "Latency\n(cycles)")):
-        ax.text(x, 1.02, t, transform=ax.transAxes, ha=ha, va="bottom", fontsize=9.5, fontweight="bold", color=INK)
-    ax.axvline(0, color=INK, lw=1, zorder=3)
-    ax.set_yticks([])
-    ax.set_ylim(len(rows) - 0.4, -0.6)
-    ax.set_xlim(lo - 0.12 * (hi - lo), hi + 0.2 * (hi - lo))
-    ax.tick_params(length=0)
-    ax.set_xlabel(f"change in ResNet-50 total cycles vs baseline {base:,}  (100 cycles = {100 * 100 / base:.1f}%)")
-    ax.legend(handles=[Patch(color=HALF, label="halved"), Patch(color=DOUBLE, label="doubled")],
-              loc="lower right", frameon=False, fontsize=9)
-    fig.subplots_adjust(left=0.34, right=0.97, top=0.83, bottom=0.16)
-    fig.text(0.02, 0.94, "ResNet-50 latency sensitivity: each [A] latency halved and doubled alone", ha="left",
-             va="center", fontsize=12.5, fontweight="bold", color=INK)
-    fig.text(0.02, 0.02, "* [A] floorplan distance, not an instruction latency. Latencies are whole cycles; values whose "
-             "half is not a whole\n  number have no halved run. Bars rank by swing including baseline. "
-             "Every plotted run is bit-exact.", fontsize=8.5, color=INK2)
-    os.makedirs(os.path.dirname(out_png), exist_ok=True)
-    fig.savefig(out_png, dpi=150, facecolor=SURFACE)
-    plt.close(fig)
+    def signed(v, fmt="{:,.0f}"):
+        return ("+" if v > 0 else "−" if v < 0 else "") + fmt.format(abs(v))
+
+    style = {"font.family": "STIXGeneral", "mathtext.fontset": "stix", "font.size": 12, "axes.linewidth": 0.8,
+             "axes.edgecolor": INK, "axes.labelcolor": INK, "xtick.color": INK, "ytick.color": INK,
+             "xtick.direction": "in", "xtick.major.size": 5, "xtick.minor.size": 3, "hatch.linewidth": 0.6}
+    with plt.rc_context(style):
+        fig, ax = plt.subplots(figsize=(10, 6.2))
+        fig.patch.set_facecolor("white")
+        ax.set_axisbelow(True)
+        ax.grid(True, axis="x", color=GRID, lw=0.6)
+        left = blended_transform_factory(ax.transAxes, ax.transData)
+        lo = hi = 0
+        for i, r in enumerate(rows):
+            assumed = int(r["assumed"])
+            dh = int(r["half_cycles"]) - base if r["half_cycles"] else None
+            dd = int(r["double_cycles"]) - base
+            for d, col in ((dh, HALF), (dd, DOUBLE)):
+                if d:
+                    ax.barh(i, d, height=0.6, color=col, edgecolor=INK, lw=0.6, zorder=2)
+                    ax.annotate(signed(d), (d, i), xytext=(5 if d > 0 else -5, 0), textcoords="offset points",
+                                ha="left" if d > 0 else "right", va="center", fontsize=11, color=INK)
+                    lo, hi = min(lo, d), max(hi, d)
+            if dh is None:
+                ax.annotate(f"(cannot halve {assumed} cycle)", (0, i), xytext=(-5, 0), textcoords="offset points",
+                            ha="right", va="center", fontsize=10, style="italic", color=INK2)
+            if dd == 0 and not dh:
+                ax.annotate("0", (0, i), xytext=(5, 0), textcoords="offset points", va="center", fontsize=11, color=INK)
+            hops = r["unit"] == "hops"
+            ax.text(-0.17, i, r["instruction"] + ("*" if hops else ""), transform=left, ha="right", va="center",
+                    fontsize=12, color=INK)
+            ax.text(-0.08, i, f"{assumed}" + (" hops" if hops else ""), transform=left, ha="center", va="center",
+                    fontsize=12, color=INK)
+        for x, ha, t in ((-0.17, "right", "Instruction"), (-0.08, "center", "Assumed\nlatency\n(cycles)")):
+            ax.text(x, 1.015, t, transform=ax.transAxes, ha=ha, va="bottom", fontsize=12, fontweight="bold", color=INK)
+        ax.axvline(0, color=INK, lw=1, zorder=3)
+        ax.set_yticks([])
+        ax.set_ylim(len(rows) - 0.4, -0.6)
+        ax.set_xlim(lo - 0.15 * (hi - lo), hi + 0.15 * (hi - lo))
+        ax.xaxis.set_major_locator(MultipleLocator(100))
+        ax.xaxis.set_minor_locator(MultipleLocator(50))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: signed(v)))
+        ax.set_xlabel("Δ cycles", labelpad=6, fontsize=13)
+        top = ax.secondary_xaxis("top", functions=(lambda v: 100 * v / base, lambda v: v * base / 100))
+        top.xaxis.set_major_locator(MultipleLocator(0.2))
+        top.xaxis.set_major_formatter(FuncFormatter(lambda v, _: signed(round(v, 1) + 0.0, "{:.1f}")))
+        top.set_xlabel("Δ cycles (% of baseline)", labelpad=6, fontsize=13)
+        for sp in (*ax.spines.values(), *top.spines.values()):
+            sp.set_alpha(FRAME_ALPHA)
+        ax.spines["top"].set_visible(False)   # the percent axis draws this edge
+        leg = ax.legend(handles=[Patch(facecolor=HALF, edgecolor=INK, lw=0.6, label="latency × 0.5"),
+                           Patch(facecolor=DOUBLE, edgecolor=INK, lw=0.6, label="latency × 2")],
+                  loc="lower right", frameon=True, fancybox=False, fontsize=11)
+        leg.get_frame().set_linewidth(0.6)
+        leg.get_frame().set_alpha(None)
+        leg.get_frame().set_facecolor("white")
+        leg.get_frame().set_edgecolor((*to_rgb(INK), FRAME_ALPHA))
+        fig.subplots_adjust(left=0.35, right=0.97, top=0.78, bottom=0.19)
+        fig.text(0.02, 0.955, "ResNet-50 sensitivity to assumed latencies", ha="left", va="center", fontsize=16,
+                 fontweight="bold", color=INK)
+        fig.text(0.02, 0.91, f"One assumed [A] value changed at a time; baseline = {base:,} cycles", ha="left",
+                 va="center", fontsize=12, color=INK2)
+        fig.text(0.02, 0.025, "* Floorplan distance in hops, not an instruction latency. Latencies are whole cycles, so a "
+                 "1-cycle latency has no halved run.\n  Sorted by range including the baseline. "
+                 "Every plotted run is bit-exact.", fontsize=10.5, color=INK2, linespacing=1.3)
+        os.makedirs(os.path.dirname(out_png), exist_ok=True)
+        fig.savefig(out_png, dpi=200, facecolor="white")
+        plt.close(fig)
     return out_png
 
 

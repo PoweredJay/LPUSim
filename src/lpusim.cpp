@@ -546,6 +546,7 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
             if (addr < 0 || addr >= kMemWords) { violation(cycle, q, "address out of range"); return; }
             bank_check(g, addr, false);
             act.bump(act.mem_read, cycle);
+            read_check(cycle, q, g, addr);
             emit(cycle + lat_.mem_read.d_func - 1, pos, in.dst.dir, in.dst.base, mem_[static_cast<std::size_t>(g)][static_cast<std::size_t>(addr)], out_tag);
             return;
         }
@@ -558,6 +559,7 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
                                  ((*map)[static_cast<std::size_t>(t * 16 + 1)] << 8);
                 if (addr >= kMemWords) { violation(cycle, q, "gather address out of range"); return; }
                 if (addr / kBankWords != last_bank) { bank_check(g, addr, false); last_bank = addr / kBankWords; }
+                read_check(cycle, q, g, addr);
                 const Vector& w = mem_[static_cast<std::size_t>(g)][static_cast<std::size_t>(addr)];
                 std::copy(w.begin() + t * 16, w.begin() + t * 16 + 16, out.begin() + t * 16);
             }
@@ -571,7 +573,7 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
             const Vector* v = operand(cycle, q, si, 0, 0, r);
             bank_check(g, addr, true);
             act.bump(act.mem_write, cycle);
-            writes_.push_back(PendingWrite{g, addr, *v});
+            writes_.push_back(PendingWrite{g, addr, *v, cycle + lat_.mem_write.d_func - 1});
             return;
         }
         violation(cycle, q, "opcode not legal on this MEM queue");
@@ -586,6 +588,8 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
     const int role = q_mxm_role(q);
     if (in.opcode == Opcode::MxmLoadWeights && role == kMxmLW) {
         if (r >= kSuperlanes) { violation(cycle, q, "LW beyond 20 issues"); return; }
+        if (cycle < pl.w_ready) violation(cycle, q, "LW overwrites the buffer while an IW is in progress");
+        pl.buf_ready = cycle + lat_.mxm_lw.d_func;
         for (int s = 0; s < 16; ++s) {
             const Vector* v = operand(cycle, q, si, 0, s, r);
             const int f = 16 * r + s;
@@ -596,10 +600,13 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
         return;
     }
     if (in.opcode == Opcode::MxmInstallWeights && role == kMxmIW) {
+        if (cycle < pl.buf_ready) violation(cycle, q, "IW before its LW has landed");
         pl.w = pl.buf;
+        pl.w_ready = cycle + lat_.mxm_iw.d_func;
         return;
     }
     if (in.opcode == Opcode::MxmActivate && role == kMxmABC) {
+        if (cycle < pl.w_ready) violation(cycle, q, "ABC before its IW has finished");
         const Vector* xv = operand(cycle, q, si, 0, 0, r);
         std::int8_t x[kLanes];
         for (int i = 0; i < kLanes; ++i) x[i] = static_cast<std::int8_t>((*xv)[static_cast<std::size_t>(i)]);
@@ -621,6 +628,29 @@ void Simulator::execute(std::int64_t cycle, int q, const SimInstr& si, int r) {
         return;
     }
     violation(cycle, q, "MXM opcode not modeled (ACC)");
+}
+
+void Simulator::land_writes(std::int64_t before) {
+    std::size_t keep = 0;
+    for (std::size_t i = 0; i < writes_.size(); ++i) {
+        PendingWrite& w = writes_[i];
+        if (w.land < before) {
+            mem_[static_cast<std::size_t>(w.g)][static_cast<std::size_t>(w.addr)] = w.v;
+        } else {
+            if (keep != i) writes_[keep] = w;
+            ++keep;
+        }
+    }
+    writes_.resize(keep);
+}
+
+// A Read or Gather of a word whose Write (from an earlier cycle) has not landed would see old data.
+void Simulator::read_check(std::int64_t cycle, int q, int g, int addr) {
+    for (const PendingWrite& w : writes_)
+        if (w.g == g && w.addr == addr && w.land - lat_.mem_write.d_func + 1 < cycle) {
+            violation(cycle, q, "read before its write has landed");
+            return;
+        }
 }
 
 void Simulator::run(const Program& prog) {
@@ -693,6 +723,7 @@ void Simulator::run(const Program& prog) {
             }
         }
         T = next;
+        land_writes(T);
         while (!heap.empty() && heap.top().first == T) {
             const int q = heap.top().second;
             heap.pop();
@@ -715,10 +746,10 @@ void Simulator::run(const Program& prog) {
         }
         pending_emits_ -= bucket.size();
         bucket.clear();
-        for (const PendingWrite& w : writes_) mem_[static_cast<std::size_t>(w.g)][static_cast<std::size_t>(w.addr)] = w.v;
-        writes_.clear();
         last_cycle = T;
     }
+    for (const PendingWrite& w : writes_) last_cycle = std::max(last_cycle, w.land);
+    land_writes(INT64_MAX);
     check_text(prog);
 }
 

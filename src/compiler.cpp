@@ -782,12 +782,12 @@ void Compiler::lower_conv(int li) {
             o.kind = 'L';
             o.layer = li;
             o.label = L.name + " LW";
-            o.min_issue = planes_[static_cast<std::size_t>(pl)].last_iw + 1;
+            o.min_issue = planes_[static_cast<std::size_t>(pl)].w_ready;   // the buffer is free once the last IW is done
             const int lid = lw.add_op(o);
             lw.consume(lid, 0, e16, 0, 16);
             sch_.place(lw);
             note(lw, li);
-            lw_end[k] = lw.ops[static_cast<std::size_t>(lid)].start + kSuperlanes;
+            lw_end[k] = lw.ops[static_cast<std::size_t>(lid)].start + kSuperlanes - 1 + sch_.lat().mxm_lw.d_func;
             planes_[static_cast<std::size_t>(pl)].tile = tile;
             need_iw[k] = 1;
         }
@@ -895,7 +895,7 @@ void Compiler::lower_conv(int li) {
                 iw.label = L.name + " IW";
                 iw.min_issue = std::max(lw_end[k], planes_[static_cast<std::size_t>(pl)].abc_end);
                 iw_op[k] = p.add_op(iw);
-                p.links.push_back({abc_op[k], iw_op[k], -1});
+                p.links.push_back({abc_op[k], iw_op[k], -sch_.lat().mxm_iw.d_func});
             }
         }
         for (auto& [key, ks] : out_slots) {
@@ -972,7 +972,7 @@ void Compiler::lower_conv(int li) {
             PlaneState& ps = planes_[static_cast<std::size_t>(planes[k])];
             const POp& a = p.ops[static_cast<std::size_t>(abc_op[k])];
             ps.abc_end = a.start + a.n;
-            if (iw_op[k] >= 0) ps.last_iw = p.ops[static_cast<std::size_t>(iw_op[k])].start;
+            if (iw_op[k] >= 0) ps.w_ready = p.ops[static_cast<std::size_t>(iw_op[k])].start + sch_.lat().mxm_iw.d_func;
         }
     }
     for (auto& [k, pb] : pbuf)

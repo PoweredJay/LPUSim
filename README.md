@@ -140,7 +140,7 @@ The other `src/` files are listed without the `src/` prefix above.
     runs; IW (1 cycle) goes between them.
   * VXM: one IQ per ALU. SXM: 14 IQs per side, empty for ResNet-50 (no SXM op is modeled yet).
   * Every IQ other than MEM is single-issue [Ours].
-* Latencies: MEM Read 1, Write 0, Gather 2 [A]; VXM add 1, mul 2, convert 1, relu 1, max 1 [A];
+* Latencies: MEM Read 1, Write 1 (issue to readable), Gather 2 [A]; VXM add 1, mul 2, convert 1, relu 1, max 1 [A];
   MXM LW 1 per issue, IW 1, ABC 20 [I]; Sync preamble 35 cycles [P]; superlane stagger 19 [P].
 * Superlane stagger is analytic. Every op is lane-local except the MXM reduction, which ABC's
   d_func already covers, so the stagger adds 19 cycles to the end of the program.
