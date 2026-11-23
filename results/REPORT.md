@@ -81,8 +81,29 @@ No simulated point for paper x = 8,179 (M = 4096 needs a 4,096-word store in one
 ### Why ours is below the paper at low operational intensity and above it in the middle
 
 * **Low intensity (-22% at 8, -22% at 16 ops/B).** Below the crossover our time is almost flat (280 + M cycles): it is set by loading weights, not by compute. Our lowering [Ours] puts all weight tiles in 16 slices per hemisphere (MEM28-43), so the two planes of a hemisphere share 16 read ports and take turns loading. The paper's hardware loads both at once: "using all 32 streams in each direction allows us to emplace weights in both MXM planes simultaneously on both MXM hemispheres, loading all 409,600 weights on-chip in less than 40 cycles" (ISCA 2020 p.152; the same text is in patent US 11,822,510). Our layout needs 40 cycles plus transit for the same load. Spreading the weights over 32 slices (weights over 32 slices (MEM12-43)), so the two planes' LWs can partly overlap, is the experiment that tests this: it cuts the gap to -5% at 8, -10% at 16 ops/B and leaves high intensity unchanged. So most of the low-intensity gap is our weight layout, not the hardware timing model. It does not close fully because the two planes' loads still overlap only partly in that layout, and the pipeline tail of a one-shot run (the last tile's ABC d_func 20 [I], the trip to the VXM, the write) is never hidden.
-* **Middle intensity (up to +10% at 128 ops/B).** Above the crossover our time is 164 + 4M cycles: the scheduler hides the next tile's LW completely behind the current ABC and leaves no bubble between rounds, so our curve is max(weight-bound, MXM-bound) plus a fixed tail, with a sharp knee at 77 ops/B. The paper's curve bends gradually over the same range. We cannot see the paper's schedule, so this is an inference: its compiled programs lose some cycles near the knee (imperfect LW/ABC overlap, gaps between rounds) where ours lose none, which puts our overestimate just past the knee. It is not the weight placement: the 32-slice experiment is +12% at the same load. Our perfect overlap rests on assumed [A] latencies (LW 1 cycle per issue, IW 1 cycle) and the inferred [I] ABC d_func of 20; longer real latencies would lower our curve most around the knee.
+* **Middle intensity (up to +10% at 128 ops/B).** Above the crossover our time is 164 + 4M cycles: the scheduler hides the next tile's LW completely behind the current ABC and leaves no bubble between rounds, so our curve is max(weight-bound, MXM-bound) plus a fixed tail, with a sharp knee at 77 ops/B. The paper's curve bends gradually over the same range. We cannot see the paper's schedule, so this is an inference: its compiled programs lose some cycles near the knee (imperfect LW/ABC overlap, gaps between rounds) where ours lose none, which puts our overestimate just past the knee. It is not the weight placement: the 32-slice experiment is +12% at the same load. Our perfect overlap rests on the assumed [A] 1-cycle weight install (IW) between rounds; the test below shows that a longer IW closes this gap.
 * **High intensity (+3%, +3%, +2% from 1,022 ops/B up).** Both curves approach the 819 TOPS peak; only our 164-cycle fixed tail is left, so the gap shrinks.
+
+### Testing the weight-swap explanation (`results/roofline_iw10.csv`)
+
+The same sweep with the weight install (IW) at 10 cycles instead of 1 (`roofline --lat mxm_iw=10`), weights next to the MXM. Every point is bit-exact with 0 violations.
+
+| paper ops/B | paper TOPS | ours, IW = 1 | vs paper | ours, IW = 10 | vs paper |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 59 | 46.2 | -21.8% | 41.0 | -30.6% |
+| 16 | 116 | 91.0 | -21.5% | 80.9 | -30.3% |
+| 32 | 194 | 177.1 | -8.7% | 157.9 | -18.6% |
+| 64 | 309 | 336.1 | +8.8% | 301.3 | -2.5% |
+| 128 | 453 | 499.3 | +10.2% | 459.9 | +1.5% |
+| 200 | 540 | 581.0 | +7.6% | 546.1 | +1.1% |
+| 511 | 680 | 706.1 | +3.8% | 685.3 | +0.8% |
+| 639 | 697 | 726.2 | +4.2% | 708.5 | +1.6% |
+| 799 | 720 | 743.0 | +3.2% | 728.2 | +1.1% |
+| 1,022 | 737 | 758.5 | +2.9% | 746.3 | +1.3% |
+| 2,045 | 765 | 787.7 | +3.0% | 781.1 | +2.1% |
+| 4,090 | 787 | 803.1 | +2.0% | 799.7 | +1.6% |
+
+With IW = 10, every point from 64 ops/B up is within 2.5% of the paper (-2.5% to +2.1%), against up to +10.2% with IW = 1. So a weight install of about 10 cycles on the real chip would explain the middle-intensity gap: 4 rounds x ~10 cycles matches the ~40 extra cycles the paper spends there. The value 10 was chosen because it fits; the paper does not publish the IW latency, so this is an estimate, not a measurement. At low intensity a longer IW widens the gap (-31% at 8, -30% at 16), because there the weight path is the bottleneck; that end is the separate weight-layout effect above.
 
 ![roofline](figures/roofline.png)
 

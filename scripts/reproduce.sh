@@ -54,6 +54,8 @@ run resnet50_mem1     "$B/resnet" --depth 50  --latency "$LAT" --out "$RES/sensi
 run resnet50_sxm14    "$B/resnet" --depth 50  --latency "$LAT" --out "$RES/sensitivity" --tag _sxm14 --sxm-hops 14
 run resnet50_nooverlap "$B/resnet" --depth 50 --latency "$LAT" --out "$RES/sensitivity" --tag _nooverlap --no-layer-overlap
 run roofline          "$B/roofline" --latency "$LAT" --out "$RES" --m "$MS"
+run roofline_iw10     "$B/roofline" --latency "$LAT" --out "$RES" --m "$MS" --csv roofline_iw10.csv --lat mxm_iw=10 \
+                      --place "weights next to MXM with a 10-cycle IW (MEM28-43)":28:43:0:27
 run roofline_wide     "$B/roofline" --latency "$LAT" --out "$RES" --m "$MS" --csv roofline_wide_weights.csv \
                       --place "weights over 32 slices (MEM12-43):12:43:0:11"
 fail=0

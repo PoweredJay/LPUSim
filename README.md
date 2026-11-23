@@ -59,8 +59,11 @@ Compared with the paper (`planning/paper_fig9.csv`), weights next to the MXM:
   completely behind the current ABC with no gap between rounds, so our curve has a sharp knee where
   the paper's bends gradually. Converted to cycles for the same matmul, the paper takes about 40
   cycles longer (64-512 ops/B), roughly 10 per weight swap (4 rounds), where our model swaps in 1
-  cycle (IW, [A]). This is an untested hypothesis: the paper does not break down its timing. The IW
-  latency is now adjustable (`--lat mxm_iw=N`), so the next step is a roofline sweep over it.
+  cycle (IW, [A]). Rerunning the sweep with a 10-cycle IW (`roofline --lat mxm_iw=10`,
+  `results/roofline_iw10.csv`) puts every point from 64 ops/B up within 2.5% of the paper
+  (-2.5% to +2.1%). So a ~10-cycle weight install on the real chip would explain the gap. The value
+  10 was chosen because it fits; the paper does not publish it, so it is an estimate. A longer IW
+  makes the low end worse (-31% at 8 ops/B), where the weight-layout effect above dominates.
 * **+2 to +4% from 512 ops/B up**, where only the fixed 164-cycle tail is left.
 
 The full table and the derivation are in `results/REPORT.md`.
@@ -104,7 +107,7 @@ make B=/tmp/lpu-build && cd src
 /tmp/lpu-build/resnet --depth 50                       # writes ../results/resnet50_*
 /tmp/lpu-build/resnet --depth 50 --lat vxm_add=2       # override one latency (sensitivity)
 /tmp/lpu-build/resnet --depth 101 --alias-weights
-/tmp/lpu-build/roofline --m 4,64,512                   # --place name:wlo:whi:alo:ahi for a custom weight placement
+/tmp/lpu-build/roofline --m 4,64,512                   # --place name:wlo:whi:alo:ahi, --lat mxm_iw=10, ...
 ```
 
 After editing the xlsx, run `python3 planning/xlsx_to_csv.py` (standard library only) or just `make`.

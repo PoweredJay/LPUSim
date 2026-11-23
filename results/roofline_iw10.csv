@@ -1,0 +1,16 @@
+placement,M,ops_per_weight_byte,cycles,ops_per_cycle,tops_1ghz,peak_tops_1ghz,bit_exact,violations,ifetches,iq_underflows
+"weights next to MXM with a 10-cycle IW (MEM28-43)",1,2,317,10336.9,10.3369,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",2,4,318,20608.8,20.6088,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",4,8,320,40960,40.96,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",8,16,324,80908.6,80.9086,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",16,32,332,157918,157.918,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",32,64,348,301315,301.315,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",64,128,456,459902,459.902,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",100,200,600,546133,546.133,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",128,256,712,589088,589.088,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",256,512,1224,685344,685.344,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",320,640,1480,708497,708.497,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",400,800,1800,728178,728.178,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",512,1024,2248,746317,746.317,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",1024,2048,4296,781062,781.062,819.2,1,0,0,0
+"weights next to MXM with a 10-cycle IW (MEM28-43)",2048,4096,8392,799677,799.677,819.2,1,0,0,0

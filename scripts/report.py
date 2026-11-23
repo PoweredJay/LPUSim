@@ -189,10 +189,36 @@ def main():
       f"(imperfect LW/ABC overlap, gaps between rounds) where ours lose none, which puts our overestimate just "
       f"past the knee. It is not the weight placement: the 32-slice experiment is "
       + (f"{mw[4]:+.0f}% at the same load. " if mw else "about the same there. ") +
-      f"Our perfect overlap rests on assumed [A] latencies (LW 1 cycle per issue, IW 1 cycle) and the inferred "
-      f"[I] ABC d_func of 20; longer real latencies would lower our curve most around the knee.")
+      f"Our perfect overlap rests on the assumed [A] 1-cycle weight install (IW) between rounds; the test below "
+      f"shows that a longer IW closes this gap.")
     w(f"* **High intensity ({', '.join(f'{p[4]:+.0f}%' for p in hi)} from {hi[0][0]:,} ops/B up).** Both curves "
       f"approach the {PEAK:.0f} TOPS peak; only our {b0:.0f}-cycle fixed tail is left, so the gap shrinks.")
+    w("")
+
+    # ---- test of the weight-swap explanation: the same sweep with IW = 10 cycles
+    iw = load_roofline(os.path.join(R, "roofline_iw10.csv"))
+    iwname = list(iw)[0]
+    piw = {p[0]: p for p in pair_with_paper(iw[iwname], paper)}
+    w("### Testing the weight-swap explanation (`results/roofline_iw10.csv`)")
+    w("")
+    w(f"The same sweep with the weight install (IW) at 10 cycles instead of 1 (`roofline --lat mxm_iw=10`), "
+      f"weights next to the MXM. Every point is bit-exact with 0 violations.")
+    w("")
+    w("| paper ops/B | paper TOPS | ours, IW = 1 | vs paper | ours, IW = 10 | vs paper |")
+    w("|---:|---:|---:|---:|---:|---:|")
+    for px, pt, M, st, pct in pn:
+        q = piw.get(px)
+        w(f"| {px:,} | {pt:.0f} | {st:.1f} | {pct:+.1f}% | " + (f"{q[3]:.1f} | {q[4]:+.1f}% |" if q else " | |"))
+    upper = [piw[p[0]][4] for p in pn if p[0] >= 64 and p[0] in piw]
+    lower = [piw[p[0]] for p in pn if p[0] <= 16 and p[0] in piw]
+    w("")
+    w(f"With IW = 10, every point from 64 ops/B up is within {max(abs(v) for v in upper):.1f}% of the paper "
+      f"({min(upper):+.1f}% to {max(upper):+.1f}%), against up to {mid[4]:+.1f}% with IW = 1. So a weight install of "
+      f"about 10 cycles on the real chip would explain the middle-intensity gap: 4 rounds x ~10 cycles matches the "
+      f"~40 extra cycles the paper spends there. The value 10 was chosen because it fits; the paper does not "
+      f"publish the IW latency, so this is an estimate, not a measurement. At low intensity a longer IW widens the "
+      f"gap (" + ", ".join(f"{q[4]:+.0f}% at {q[0]}" for q in lower) + "), because there the weight path is the "
+      f"bottleneck; that end is the separate weight-layout effect above.")
     w("")
     w("![roofline](figures/roofline.png)")
     w("")

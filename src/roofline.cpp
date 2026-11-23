@@ -5,6 +5,7 @@
 //            [--latency ../planning/instruction-timing-table.csv]
 //            [--place "name:wlo:whi:alo:ahi"]   run one custom placement instead of the three
 //                                               standard ones (MEM slice index ranges per hemisphere)
+//            [--lat name=d]                     override one latency's d_func, as in resnet (repeatable)
 // Exit status 1 if any point is not bit-exact or has a violation or IQ underflow.
 #include <cstdio>
 #include <cstdlib>
@@ -28,6 +29,7 @@ int main(int argc, char** argv) {
     std::string out = "../results", csv = "roofline.csv", latency_csv = "../planning/instruction-timing-table.csv";
     std::vector<int> ms;
     for (int M = 1; M <= 2048; M *= 2) ms.push_back(M);
+    std::vector<std::pair<std::string, int>> lat_overrides;   // --lat name=d_func
     struct Place { std::string name; int wlo, whi, alo, ahi; };
     std::vector<Place> places = {
         {"weights next to MXM (MEM28-43)", 28, 43, 0, 27},
@@ -55,6 +57,15 @@ int main(int argc, char** argv) {
                 return 2;
             }
             places = {p};
+        } else if (!std::strcmp(argv[i], "--lat") && i + 1 < argc) {
+            const std::string a = argv[++i];
+            const auto eq = a.find('=');
+            LatencyTable probe;
+            if (eq == std::string::npos || !probe.find(a.substr(0, eq))) {
+                std::fprintf(stderr, "--lat wants name=d_func with a known name (mem_read, vxm_add, mxm_iw, ...)\n");
+                return 2;
+            }
+            lat_overrides.emplace_back(a.substr(0, eq), std::atoi(a.c_str() + eq + 1));
         } else {
             std::fprintf(stderr, "unknown option %s\n", argv[i]);
             return 2;
@@ -83,6 +94,7 @@ int main(int argc, char** argv) {
             Floorplan fp;
             LatencyTable lat;
             lat.load_csv(latency_csv, nullptr);
+            for (const auto& [name, d] : lat_overrides) lat.find(name)->d_func = d;
             Scheduler sch(fp, lat);
             Simulator sim(fp, lat);
             CompileOptions opt;
