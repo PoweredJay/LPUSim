@@ -74,6 +74,7 @@ make PYTHON=/path/to/python3      # if the default python3 has no matplotlib
 make B=/tmp/lpu-build             # build elsewhere (e.g. if the checkout is on a noexec mount)
 make resnet                       # only ResNet-50/101/152 (~15 s): summary + results/figures/resnet_ips.png
 make resnet ARGS="--no-layer-overlap"   # same, with extra flags passed to every run
+make sensitivity                  # each [A] latency halved and doubled: results/figures/latency_sensitivity.png
 ```
 
 The default build dir is `./build`, or `~/.cache/lpusim-build` when the checkout's path contains
@@ -105,6 +106,7 @@ After editing the xlsx, run `python3 planning/xlsx_to_csv.py` (standard library 
 |---|---|
 | `Makefile`, `scripts/reproduce.sh` | the one command: build, test, every run, figures, report |
 | `scripts/plots.py` | `results/figures/roofline.png` (roofline, log-log), `roofline_vs_paper.png` (bars vs the paper) and `resnet_ips.png` (ResNet IPS at 0.9 and 1 GHz, 101/152 marked as projections) |
+| `scripts/sensitivity.py` | latency sweep behind `results/figures/latency_sensitivity.png` (`make sensitivity`) |
 | `scripts/report.py` | `results/REPORT.md`: every reported number, computed from the run outputs |
 | `planning/instruction-timing-table.xlsx`, `xlsx_to_csv.py` | latency table and its exporter |
 | `planning/paper_fig9.csv` | the paper's Fig. 9 points, used only as a reference series |

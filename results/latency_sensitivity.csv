@@ -1,0 +1,12 @@
+key,instruction,tag,unit,assumed,baseline_cycles,half_cycles,double_cycles,swing_cycles
+sxm_hops,SXM crossing,A,hops,4,49482,49283,49880,597
+vxm_mul,VXM mul,A,cycles,2,49482,49479,49682,203
+vxm_add,VXM add,A,cycles,1,49482,,49606,124
+mem_read,MEM read,A,cycles,1,49482,,49557,75
+mem_gather,MEM gather,A,cycles,2,49482,49458,49530,72
+vxm_convert,VXM convert,A,cycles,1,49482,,49524,42
+vxm_relu,VXM relu,A,cycles,1,49482,,49522,40
+vxm_max,VXM max,A,cycles,1,49482,,49486,4
+mem_write,MEM write,A,cycles,0,49482,49482,49482,0
+mxm_lw,MXM load weights (LW),A/P,cycles,1,49482,,49482,0
+mxm_iw,MXM install weights (IW),A,cycles,1,49482,,49482,0

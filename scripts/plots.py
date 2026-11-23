@@ -6,10 +6,12 @@
 Writes
   results/figures/roofline.png           roofline: three weight placements, log-log like the paper's Fig. 9
   results/figures/roofline_vs_paper.png  paper vs ours vs the 32-slice experiment, at the paper's intensities
+  results/figures/latency_sensitivity.png  tornado chart: each [A] latency halved and doubled (ResNet-50)
 from
   results/roofline.csv               three weight placements (src/roofline.cpp)
   results/roofline_wide_weights.csv  experiment: weights spread over 32 slices per hemisphere
   planning/paper_fig9.csv            paper reference points (not simulated; see the file header)
+  results/latency_sensitivity.csv    latency sweep (scripts/sensitivity.py)
 
 The loaders and the roof constants are also used by scripts/report.py.
 """
@@ -286,11 +288,75 @@ def resnet_figure(results, out_png):
     return out_png
 
 
+def sensitivity_figure(results, out_png):
+    """Tornado chart: change in ResNet-50 cycles when each assumed [A] value is halved or doubled alone."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    from matplotlib.transforms import blended_transform_factory
+
+    rows = read_csv(os.path.join(results, "latency_sensitivity.csv"))
+    base = int(rows[0]["baseline_cycles"])
+    HALF, DOUBLE = SERIES[0], SERIES[1]
+
+    _style(plt)
+    fig, ax = plt.subplots(figsize=(11, 6.8))
+    fig.patch.set_facecolor(SURFACE)
+    ax.set_facecolor(SURFACE)
+    ax.set_axisbelow(True)
+    for s in ax.spines.values():
+        s.set_visible(False)
+    ax.grid(True, axis="x", color=GRID, lw=0.8)
+    left = blended_transform_factory(ax.transAxes, ax.transData)
+    lo = hi = 0
+    for i, r in enumerate(rows):
+        assumed = int(r["assumed"])
+        dh = int(r["half_cycles"]) - base if r["half_cycles"] else None
+        dd = int(r["double_cycles"]) - base
+        for d, col in ((dh, HALF), (dd, DOUBLE)):
+            if d:
+                ax.barh(i, d, height=0.55, color=col, zorder=2)
+                ax.annotate(f"{d:+d}", (d, i), xytext=(6 if d > 0 else -6, 0), textcoords="offset points",
+                            ha="left" if d > 0 else "right", va="center", fontsize=9, color=INK2)
+                lo, hi = min(lo, d), max(hi, d)
+        if dh is None:
+            ax.annotate(f"(cannot halve {assumed} cycle)", (0, i), xytext=(-6, 0), textcoords="offset points",
+                        ha="right", va="center", fontsize=9, color=INK2)
+        if dd == 0 and not dh:
+            ax.annotate("0  (baseline is 0, so unchanged)" if assumed == 0 else "0  (has no effect in the model)",
+                        (0, i), xytext=(6, 0), textcoords="offset points", va="center", fontsize=9, color=INK2)
+        ax.text(-0.17, i, r["instruction"] + ("*" if r["unit"] == "hops" else ""), transform=left, ha="right",
+                va="center", fontsize=9.5, color=INK)
+        ax.text(-0.075, i, f"{assumed}" + (" hops" if r["unit"] == "hops" else ""), transform=left, ha="center",
+                va="center", fontsize=9.5, color=INK)
+    for x, ha, t in ((-0.17, "right", "Instruction"), (-0.075, "center", "Latency\n(cycles)")):
+        ax.text(x, 1.02, t, transform=ax.transAxes, ha=ha, va="bottom", fontsize=9.5, fontweight="bold", color=INK)
+    ax.axvline(0, color=INK, lw=1, zorder=3)
+    ax.set_yticks([])
+    ax.set_ylim(len(rows) - 0.4, -0.6)
+    ax.set_xlim(lo - 0.12 * (hi - lo), hi + 0.2 * (hi - lo))
+    ax.tick_params(length=0)
+    ax.set_xlabel(f"change in ResNet-50 total cycles vs baseline {base:,}  (100 cycles = {100 * 100 / base:.1f}%)")
+    ax.legend(handles=[Patch(color=HALF, label="halved"), Patch(color=DOUBLE, label="doubled")],
+              loc="lower right", frameon=False, fontsize=9)
+    fig.subplots_adjust(left=0.34, right=0.97, top=0.83, bottom=0.16)
+    fig.text(0.02, 0.94, "ResNet-50 latency sensitivity: each [A] latency halved and doubled alone", ha="left",
+             va="center", fontsize=12.5, fontweight="bold", color=INK)
+    fig.text(0.02, 0.02, "* [A] floorplan distance, not an instruction latency. Latencies are whole cycles; values whose "
+             "half is not a whole\n  number have no halved run. Bars rank by swing including baseline. "
+             "Every plotted run is bit-exact.", fontsize=8.5, color=INK2)
+    os.makedirs(os.path.dirname(out_png), exist_ok=True)
+    fig.savefig(out_png, dpi=150, facecolor=SURFACE)
+    plt.close(fig)
+    return out_png
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default=os.path.join(ROOT, "results"))
     ap.add_argument("--planning", default=os.path.join(ROOT, "planning"))
-    ap.add_argument("--only", choices=["all", "roofline", "resnet"], default="all")
+    ap.add_argument("--only", choices=["all", "roofline", "resnet", "sensitivity"], default="all")
     a = ap.parse_args()
     fig_dir = os.path.join(a.results, "figures")
     pngs = []
@@ -299,6 +365,8 @@ def main():
         pngs.append(comparison_figure(a.results, a.planning, os.path.join(fig_dir, "roofline_vs_paper.png")))
     if a.only in ("all", "resnet"):
         pngs.append(resnet_figure(a.results, os.path.join(fig_dir, "resnet_ips.png")))
+    if a.only in ("all", "sensitivity"):
+        pngs.append(sensitivity_figure(a.results, os.path.join(fig_dir, "latency_sensitivity.png")))
     for png in pngs:
         print(f"wrote {os.path.relpath(png, ROOT)}")
 

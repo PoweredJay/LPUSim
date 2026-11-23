@@ -41,7 +41,14 @@ resnet: build
 	  else echo "(chart skipped: $(PY) has no matplotlib; use make resnet PYTHON=/path/to/python3)"; fi
 	@echo "Full outputs: results/resnet{50,101,152}_summary.json, results/resnet*.log, results/figures/resnet_ips.png"
 
+# Latency sensitivity (ResNet-50): halve and double each assumed [A] latency alone and draw the
+# tornado chart. Writes results/latency_sensitivity.csv and results/figures/latency_sensitivity.png
+sensitivity: build
+	"$(PY)" -I scripts/sensitivity.py --bin "$(B)/resnet"
+	@if "$(PY)" -c "import matplotlib" 2>/dev/null; then "$(PY)" -I scripts/plots.py --only sensitivity; \
+	  else echo "(chart skipped: $(PY) has no matplotlib; use make sensitivity PYTHON=/path/to/python3)"; fi
+
 clean:
 	rm -rf "$(B)"
 
-.PHONY: reproduce build test resnet clean
+.PHONY: reproduce build test resnet sensitivity clean

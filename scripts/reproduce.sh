@@ -6,7 +6,7 @@
 #   PYTHON=/path/to/python3 make   a Python 3 that has matplotlib (pip install -r requirements.txt)
 #
 # Steps: latency CSV from the xlsx -> build -> unit + layer tests -> ResNet-50/101/152 ->
-# sensitivity runs -> roofline sweeps -> figures -> results/REPORT.md. Exits non-zero if any
+# sensitivity runs -> roofline sweeps -> latency sweep -> figures -> results/REPORT.md. Exits non-zero if any
 # test fails, any run reports a violation / underflow / mismatch, or any step errors.
 set -euo pipefail
 
@@ -60,6 +60,9 @@ fail=0
 for p in "${pids[@]}"; do wait "$p" || fail=1; done
 for f in "$RES"/logs/*.log; do printf '\n--- %s\n' "$(basename "$f")"; grep -E 'simulated|BIT-EXACT|MISMATCH|PROJECTION|violation' "$f" | head -6 || true; done
 if [ "$fail" -ne 0 ]; then echo "error: a run failed (see results/logs/)" >&2; exit 1; fi
+
+step "latency sweep (each [A] latency halved and doubled, ResNet-50)"
+"$PYTHON" -I "$ROOT/scripts/sensitivity.py" --bin "$B/resnet" --results "$RES" --latency "$LAT" --jobs "$JOBS"
 
 step "figures and report"
 "$PYTHON" -I "$ROOT/scripts/plots.py"

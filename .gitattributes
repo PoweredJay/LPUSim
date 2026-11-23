@@ -1,0 +1,4 @@
+# Keep LF everywhere: bash and make in WSL fail on CRLF scripts
+* text=auto eol=lf
+*.xlsx binary
+*.png binary
